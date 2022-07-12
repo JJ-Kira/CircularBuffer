@@ -1,8 +1,5 @@
 #include "circbuf.h"
 
-#include <stdlib.h>
-#include <string.h>
-
 /**
  * @file
  * The implementation of circular buffer functions.
