@@ -8,42 +8,42 @@ int main(void) {
     char buf;
     char buf_arr[50];
 
-    /* Create and initialize ring buffer */
+    /* Create and initialize circular buffer */
     circbuf *ring_buffer = circbuf_init(50);
 
-    /* Add elements to buffer; one at a time */
+    /* Push elements to buffer; one at a time */
     for (i = 0; i < 100; i++) {
         circbuf_push(ring_buffer, "1", 1);
     }
 
-    /* Dequeue all elements */
+    /* Pop all elements */
     for (i = 100;  i > 0; i--) {
         circbuf_pop(ring_buffer, &buf, 1);
         printf("Read: %d\n", buf);
     }
     printf("\n===============\n");
 
-    circbuf_push(ring_buffer, "Hello, Ring Buffer!", 20);
+    /* Push multiple elements to buffer at once */
+    circbuf_push(ring_buffer, "Hello, Circ Buffer!", 20);
 
-    /* Dequeue all elements */
-    int count = 20;
-    while (count > 0) {
-        /* Print contents */
+    /* Pop all elements */
+    i = 20;
+    while (i > 0) {
         circbuf_pop(ring_buffer, &buf, 1);
         printf("Read: %c\n", buf);
-        count--;
+        i--;
     }
 
-    /* Add new array */
-    circbuf_push(ring_buffer, "Hello again, Ring Buffer!", 26);
+    /* Push new set of elements */
+    circbuf_push(ring_buffer, "Hello again, Circ Buffer!", 26);
 
-    /* Dequeue array in two parts */
+    /* Pop them in two parts */
     printf("Read:\n");
     circbuf_pop(ring_buffer, buf_arr, 13);
     /* Add \0 termination before printing */
     buf_arr[13] = '\0';
     printf("%s\n", buf_arr);
-    /* Dequeue remaining */
+    /* Pop remaining */
     circbuf_pop(ring_buffer, buf_arr, 13);
     printf("%s", buf_arr);
 

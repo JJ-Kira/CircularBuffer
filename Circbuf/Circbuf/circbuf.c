@@ -3,6 +3,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+/**
+ * @file
+ * The implementation of circular buffer functions.
+*/
+
+
 circbuf* circbuf_init(size_t size)
 {
     circbuf* buf = malloc(sizeof(*buf));
@@ -10,26 +16,32 @@ circbuf* circbuf_init(size_t size)
     buf->data = malloc(size);
 
     buf->size = size;
-    buf->head = buf->fill = 0;
+    buf->head = buf->tail = 0;
 
     return buf;
 }
 
-static inline void advance_tail(circbuf* buf, size_t bytes)
+static inline void inc_tail(circbuf* buf, size_t bytes)
 {
-    buf->fill += bytes;
+    buf->tail += bytes;
 }
 
-void circbuf_push(circbuf* buf, const char* from, size_t bytes)
+static inline void inc_head(circbuf* buf, size_t bytes)
 {
-    if (bytes > circbuf_remaining(buf)) return;
+    buf->head = (buf->head + bytes) % buf->size;
+    buf->tail -= bytes;
+}
 
-    char* tail = buf->data + ((buf->head + buf->fill) % buf->size);
-    char* write_end = buf->data + ((buf->head + buf->fill + bytes) % buf->size);
+void circbuf_push(circbuf* buf, const char* from, size_t len)
+{
+    if (len > circbuf_remaining(buf)) return;
+
+    char* tail = buf->data + ((buf->head + buf->tail) % buf->size);
+    char* write_end = buf->data + ((buf->head + buf->tail + len) % buf->size);
 
     if (tail <= write_end)
     {
-        memcpy(tail, from, bytes);
+        memcpy(tail, from, len);
     }
     else
     {
@@ -38,40 +50,34 @@ void circbuf_push(circbuf* buf, const char* from, size_t bytes)
         size_t write = end - tail;
         memcpy(tail, from, write);
 
-        write = bytes - write;
+        write = len - write;
         memcpy(buf->data, from + write, write);
     }
 
-    advance_tail(buf, bytes);
+    inc_tail(buf, len);
 }
 
-static inline void advance_head(circbuf* buf, size_t bytes)
+void circbuf_pop(circbuf* buf, char* to, size_t len)
 {
-    buf->head = (buf->head + bytes) % buf->size;
-    buf->fill -= bytes;
-}
-
-void circbuf_pop(circbuf* buf, char* to, size_t bytes)
-{
-    if (bytes > circbuf_used(buf)) return;
+    if (len > circbuf_used(buf)) return;
 
     char* head = buf->data + buf->head;
-    char* end_read = buf->data + ((buf->head + bytes) % buf->size);
+    char* end_read = buf->data + ((buf->head + len) % buf->size);
 
     if (end_read <= head)
     {
         char* end = buf->data + buf->size;
 
-        size_t first_read = end - head;
-        memcpy(to, head, first_read);
+        size_t read = end - head;
+        memcpy(to, head, read);
 
-        size_t second_read = bytes - first_read;
-        memcpy(to + first_read, buf->data, second_read);
+        read = len - read;
+        memcpy(to + read, buf->data, read);
     }
     else
     {
-        memcpy(to, head, bytes);
+        memcpy(to, head, len);
     }
 
-    advance_head(buf, bytes);
+    inc_head(buf, len);
 }
