@@ -1,80 +1,172 @@
 #include "circbuf.h"
 
+#include <string.h>
 /**
  * @file
  * The implementation of circular buffer functions.
 */
 
+struct CircularBuffer {
+    size_t size;        // capacity
+    size_t dataSize;    // number of stored elements
+    size_t tail;        // head offset - the oldest byte position offset
+    size_t head;        // tail offset - the lastest byte position offset
+    void* buffer;
+};
 
-circbuf* circbuf_init(size_t size)
+
+circbuf circbuf_init(size_t size)
 {
-    circbuf* buf = malloc(sizeof(*buf));
-
-    buf->data = malloc(size);
-
-    buf->size = size;
-    buf->head = buf->tail = 0;
-
-    return buf;
+    size_t full_size = sizeof(struct CircularBuffer) + size;
+    void* p = malloc(full_size);
+    circbuf buffer = (circbuf)p;
+    buffer->buffer = p + sizeof(struct CircularBuffer);
+    buffer->size = size;
+    circbuf_reset(buffer);
+    return buffer;
 }
 
-static inline void inc_tail(circbuf* buf, size_t bytes)
+void circbuf_free(circbuf buf)
 {
-    buf->tail += bytes;
+    circbuf_reset(buf);
+    buf->size = 0;
+    buf->dataSize = 0;
+    buf->buffer = NULL;
+    free(buf);
 }
 
-static inline void inc_head(circbuf* buf, size_t bytes)
+void circbuf_reset(circbuf buf)
 {
-    buf->head = (buf->head + bytes) % buf->size;
-    buf->tail -= bytes;
+    buf->head = -1;
+    buf->tail = -1;
+    buf->dataSize = 0;
 }
 
-void circbuf_push(circbuf* buf, const char* from, size_t len)
-{
-    if (len > circbuf_remaining(buf)) return;
+void circbuf_push(circbuf buf, void* from, size_t len) {
+    if (len <= 0)
+        return;
 
-    char* tail = buf->data + ((buf->head + buf->tail) % buf->size);
-    char* write_end = buf->data + ((buf->head + buf->tail + len) % buf->size);
-
-    if (tail <= write_end)
+    if (len > buf->size)    //overflow case
     {
-        memcpy(tail, from, len);
+        size_t overflow = len - buf->size;
+        len = buf->size;
+        from = from + overflow;
+    }
+
+    bool resetHead = false;
+    
+    if (buf->tail + len < buf->size)
+    {
+        memcpy(&buf->buffer[buf->tail + 1], from, len);
+
+        if ((buf->tail < buf->head) && (buf->tail + len >= buf->head))
+            resetHead = true;
+
+        buf->tail += len;
+    }
+    else  //overflow case
+    {
+        size_t remainSize = buf->size - buf->tail - 1;
+        memcpy(&buf->buffer[buf->tail + 1], from, remainSize);
+
+        size_t coverSize = len - remainSize;
+        memcpy(buf->buffer, from + remainSize, coverSize);
+
+        if (buf->tail < buf->head || coverSize > buf->head)
+            resetHead = true;
+
+        buf->tail = coverSize - 1;
+    }
+
+    if (buf->head == -1)
+        buf->head = 0;
+
+    if (resetHead)
+    {
+        if (buf->tail + 1 < buf->size)
+            buf->head = buf->tail + 1;
+        else
+            buf->head = 0;
+
+        buf->dataSize = buf->size;
     }
     else
     {
-        char* end = buf->data + buf->size;
-
-        size_t write = end - tail;
-        memcpy(tail, from, write);
-
-        write = len - write;
-        memcpy(buf->data, from + write, write);
+        if (buf->tail >= buf->head)
+            buf->dataSize = buf->tail - buf->head + 1;
+        else
+            buf->dataSize = buf->size - (buf->head - buf->tail - 1);
     }
-
-    inc_tail(buf, len);
 }
 
-void circbuf_pop(circbuf* buf, char* to, size_t len)
+size_t circbuf_read(circbuf buf, size_t len, void *to, bool pop)
 {
-    if (len > circbuf_used(buf)) return;
+    if(buf->dataSize == 0 || len == 0 || !to)
+        return 0;
 
-    char* head = buf->data + buf->head;
-    char* end_read = buf->data + ((buf->head + len) % buf->size);
+    size_t read_len = len;
 
-    if (end_read <= head)
+    if(buf->dataSize < read_len)
+        read_len = buf->dataSize;
+
+
+    if(buf->head <= buf->tail)
     {
-        char* end = buf->data + buf->size;
+        memcpy(to, &buf->buffer[buf->head], read_len);
 
-        size_t read = end - head;
-        memcpy(to, head, read);
-
-        read = len - read;
-        memcpy(to + read, buf->data, read);
+        if(pop)
+        {
+            buf->head += read_len;
+            if(buf->head > buf->tail)
+            {
+                buf->head = -1;
+                buf->tail = -1;
+            }
+        }
     }
     else
     {
-        memcpy(to, head, len);
+        if(buf->head + read_len <= buf->size)
+        {
+            memcpy(to, &buf->buffer[buf->head], read_len);
+
+            if(pop)
+            {
+                buf->head += read_len;
+                if(buf->head == buf->size)
+                    buf->head = 0;
+            }
+        }
+        else
+        {
+            size_t read1 = buf->size - buf->head;
+            memcpy(to, &buf->buffer[buf->head], read1);
+
+            size_t read2 = read_len - read1;
+            memcpy(to + read1, buf->buffer, read2);
+
+            if(pop)
+            {
+                buf->head = read2;
+                if(buf->head > buf->tail)
+                {
+                    buf->head = -1;
+                    buf->tail = -1;
+                }
+            }
+        }
     }
 
-    inc_head(buf, len);
+    if(pop)
+        buf->dataSize -= read_len;
+
+    return read_len;
+}
+
+size_t circbuf_pop(circbuf buf, void* to, size_t len) {
+    return circbuf_read(buf, len, to, true);
+}
+
+size_t circbuf_peek(circbuf buf, void* to, size_t len) {
+    return circbuf_read(buf, len, to, false);
 }
