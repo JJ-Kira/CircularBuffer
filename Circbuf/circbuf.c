@@ -1,6 +1,8 @@
 #include "circbuf.h"
 
 #include <string.h>
+#include <malloc.h>
+
 /**
  * @file
  * The implementation of circular buffer functions.
@@ -11,16 +13,15 @@ struct CircularBuffer {
     size_t dataSize;    // number of stored elements
     size_t tail;        // head offset - the oldest byte position offset
     size_t head;        // tail offset - the lastest byte position offset
-    void* buffer;
+    char* buffer;
 };
 
 
 circbuf circbuf_init(size_t size)
 {
     size_t full_size = sizeof(struct CircularBuffer) + size;
-    void* p = malloc(full_size);
-    circbuf buffer = (circbuf)p;
-    buffer->buffer = p + sizeof(struct CircularBuffer);
+    circbuf buffer = malloc(full_size);
+    buffer->buffer = buffer + sizeof(struct CircularBuffer);
     buffer->size = size;
     circbuf_reset(buffer);
     return buffer;
@@ -42,8 +43,8 @@ void circbuf_reset(circbuf buf)
     buf->dataSize = 0;
 }
 
-void circbuf_push(circbuf buf, void* from, size_t len) {
-    if (len <= 0)
+void circbuf_push(circbuf buf, char* from, size_t len) {
+    if (len == 0)
         return;
 
     if (len > buf->size)    //overflow case
@@ -99,7 +100,7 @@ void circbuf_push(circbuf buf, void* from, size_t len) {
     }
 }
 
-size_t circbuf_read(circbuf buf, size_t len, void *to, bool pop)
+size_t circbuf_read(circbuf buf, size_t len, char *to, bool pop)
 {
     if(buf->dataSize == 0 || len == 0 || !to)
         return 0;
@@ -163,10 +164,10 @@ size_t circbuf_read(circbuf buf, size_t len, void *to, bool pop)
     return read_len;
 }
 
-size_t circbuf_pop(circbuf buf, void* to, size_t len) {
+size_t circbuf_pop(circbuf buf, char* to, size_t len) {
     return circbuf_read(buf, len, to, true);
 }
 
-size_t circbuf_peek(circbuf buf, void* to, size_t len) {
+size_t circbuf_peek(circbuf buf, char* to, size_t len) {
     return circbuf_read(buf, len, to, false);
 }

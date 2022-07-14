@@ -8,7 +8,7 @@ int main(void) {
     char buf_arr[50];
 
     /* Create and initialize circular buffer */
-    circbuf *ring_buffer = circbuf_init(20);
+    circbuf ring_buffer = circbuf_init(20);
 
 
     /* Push multiple elements to buffer at once */

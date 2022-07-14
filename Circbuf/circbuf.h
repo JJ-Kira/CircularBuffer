@@ -1,8 +1,7 @@
 #ifndef CIRCBUF_H
 #define CIRCBUF_H
 
-#include <stdio.h>
-#include <stdlib.h>
+#include <sys/types.h>
 #include <stdbool.h>
 
 /**
@@ -15,19 +14,19 @@ typedef struct CircularBuffer* circbuf;
  * Initializes the circular buffer with the set size.
  * @param size - The size of the circular buffer to initialize.
 */
-extern circbuf circbuf_init(size_t size);
+circbuf circbuf_init(size_t size);
 
 /**
  * Frees the set circular buffere.
  * @param buf - The buffer to be freed.
 */
-extern void circbuf_free(circbuf buf);
+void circbuf_free(circbuf buf);
 
 /**
  * Resets the given circular buffere.
  * @param buf - The buffer to be reset.
 */
-extern void circbuf_reset(circbuf buf);
+void circbuf_reset(circbuf buf);
 
 /**
  * Adds a set of bytes to the buffer.
@@ -36,7 +35,7 @@ extern void circbuf_reset(circbuf buf);
  * @param from - A pointer to the array of bytes.
  * @param len - The size of the array.
 */
-extern void circbuf_push(circbuf buf, void* from, size_t len);
+void circbuf_push(circbuf buf, char* from, size_t len);
 
 /**
  * Saves a set number of oldest bytes in the buffer to the given location, deleting them from the buffer.
@@ -45,7 +44,7 @@ extern void circbuf_push(circbuf buf, void* from, size_t len);
  * @param to - A pointer to the array where the data is to be placed.
  * @param len - The maximum number of bytes to return.
 */
-extern size_t circbuf_pop(circbuf buf, void* to, size_t len);
+size_t circbuf_pop(circbuf buf, char* to, size_t len);
 
 /**
  * Saves a set number of oldest bytes in the buffer to the given location.
@@ -55,10 +54,6 @@ extern size_t circbuf_pop(circbuf buf, void* to, size_t len);
  * @param to - A pointer to the array where the data is to be placed.
  * @param len - The maximum number of bytes to return.
 */
-extern size_t circbuf_peek(circbuf buf, void* to, size_t len);
+size_t circbuf_peek(circbuf buf, char* to, size_t len);
 
-/**
- * test purpose, prints the circular buffer's content
-*/
-extern void circbuf_print(circbuf buf, bool hex);
 #endif
