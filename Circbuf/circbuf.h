@@ -3,6 +3,7 @@
 
 #include <sys/types.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 /**
  * Structure holding the circular buffer.
@@ -17,7 +18,7 @@ typedef struct CircularBuffer* circbuf;
 circbuf circbuf_init(size_t size);
 
 /**
- * Frees the set circular buffere.
+ * Frees the set circular buffer.
  * @param buf - The buffer to be freed.
 */
 void circbuf_free(circbuf buf);
@@ -38,6 +39,13 @@ void circbuf_reset(circbuf buf);
 void circbuf_push(circbuf buf, char* from, size_t len);
 
 /**
+ * Pushes a single char to the buffer.
+ * @param buf - The buffer in which the data is to be placed.
+ * @param from - A pointer to the array of bytes.
+*/
+void circbuf_push_single(circbuf buf, char* from);
+
+/**
  * Saves a set number of oldest bytes in the buffer to the given location, deleting them from the buffer.
  * Returns the actual data size in byte popped, which is less or equal to the input 'len' parameter.
  * @param buf - The buffer from which the data is to be read.
@@ -45,6 +53,15 @@ void circbuf_push(circbuf buf, char* from, size_t len);
  * @param len - The maximum number of bytes to return.
 */
 size_t circbuf_pop(circbuf buf, char* to, size_t len);
+
+/**
+ * Saves the oldest byte in the buffer to the given location, deleting it from the buffer.
+ * Returns the actual data size in byte popped, which is 1 when completed successfully or 0 otherwise.
+ * @param buf - The buffer from which the data is to be read.
+ * @param to - A pointer to the array where the data is to be placed.
+ * @param len - The maximum number of bytes to return.
+*/
+size_t circbuf_pop_single(circbuf buf, char* to);
 
 /**
  * Saves a set number of oldest bytes in the buffer to the given location.
@@ -55,5 +72,9 @@ size_t circbuf_pop(circbuf buf, char* to, size_t len);
  * @param len - The maximum number of bytes to return.
 */
 size_t circbuf_peek(circbuf buf, char* to, size_t len);
+
+// Teesting functions
+size_t circbuf_size(circbuf buf);
+size_t circbuf_dataSize(circbuf buf);
 
 #endif

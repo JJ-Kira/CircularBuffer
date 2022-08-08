@@ -12,7 +12,7 @@ struct CircularBuffer {
     size_t size;        // capacity
     size_t dataSize;    // number of stored elements
     size_t tail;        // head offset - the oldest byte position offset
-    size_t head;        // tail offset - the lastest byte position offset
+    size_t head;        // tail offset - the latest byte position offset
     char* buffer;
 };
 
@@ -60,7 +60,7 @@ void circbuf_push(circbuf buf, char* from, size_t len) {
     {
         memcpy(&buf->buffer[buf->tail + 1], from, len);
 
-        if ((buf->tail < buf->head) && (buf->tail + len >= buf->head))
+        if (buf->tail < buf->head && buf->tail + len >= buf->head)
             resetHead = true;
 
         buf->tail += len;
@@ -97,6 +97,47 @@ void circbuf_push(circbuf buf, char* from, size_t len) {
             buf->dataSize = buf->tail - buf->head + 1;
         else
             buf->dataSize = buf->size - (buf->head - buf->tail - 1);
+    }
+}
+
+void circbuf_push_single(circbuf buf, char* from)
+{
+    bool resetHead = false;
+    
+    if (buf->tail + 1 < buf->size)
+    {
+        memcpy(&buf->buffer[buf->tail + 1], from, 1);
+
+        if (buf->tail < buf->head && buf->tail + 1 >= buf->head)
+            resetHead = true;
+
+        buf->tail += 1;
+    }
+    else  //overflow case
+    {
+        memcpy(buf->buffer, from, 1);
+
+        if (buf->tail < buf->head)
+            resetHead = true;
+
+        buf->tail = 0;
+    }
+
+    if (buf->head == -1)
+        buf->head = 0;
+    
+    if (resetHead)
+    {
+        if (buf->tail + 1 < buf->size)
+            buf->head = buf->tail + 1;
+        else
+            buf->head = 0;
+
+        buf->dataSize = buf->size;
+    }
+    else
+    {
+        buf->dataSize += 1;
     }
 }
 
@@ -170,4 +211,42 @@ size_t circbuf_pop(circbuf buf, char* to, size_t len) {
 
 size_t circbuf_peek(circbuf buf, char* to, size_t len) {
     return circbuf_read(buf, len, to, false);
+}
+
+size_t circbuf_pop_single(circbuf buf, char* to)
+{
+    if(buf->dataSize == 0 || !to)
+        return 0;
+
+    if(buf->head <= buf->tail)
+    {
+        memcpy(to, &buf->buffer[buf->head], 1);
+        buf->head += 1;
+        if(buf->head > buf->tail)
+        {
+            buf->head = -1;
+            buf->tail = -1;
+        }
+    }
+    else
+    {
+        memcpy(to, &buf->buffer[buf->head], 1);
+        buf->head += 1;
+        if(buf->head == buf->size)
+            buf->head = 0;
+    }
+
+    buf->dataSize -= 1;
+
+    return 1;
+}
+
+size_t circbuf_size(circbuf buf)
+{
+    return buf->size;
+}
+
+size_t circbuf_dataSize(circbuf buf)
+{
+    return buf->dataSize;
 }
